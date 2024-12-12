@@ -3,6 +3,7 @@ using AuctionService.Dtos;
 using AuctionService.DTOs;
 using AuctionService.Entities;
 using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -23,13 +24,16 @@ public class AuctionsController : ControllerBase
 
 
     [HttpGet]
-    public async Task<ActionResult<List<AuctionDTO>>> GetAllAuction()
+    public async Task<ActionResult<List<AuctionDTO>>> GetAllAuction(string date)
     {
-        var auction = await _dbCon.Auctions
-        .Include(b => b.Item)
-        .OrderBy(b => b.Item.Model)
-        .ToListAsync();
-        return _mapper.Map<List<AuctionDTO>>(auction);
+
+        var query = _dbCon.Auctions.OrderBy(b => b.Item.Make).AsQueryable();
+        if (!string.IsNullOrEmpty(date))
+        {
+            query = query.Where(b => b.UpdatedAt.CompareTo(DateTime.Parse(date).ToUniversalTime()) > 0);
+        }
+
+        return await query.ProjectTo<AuctionDTO>(_mapper.ConfigurationProvider).ToListAsync();
     }
     [HttpGet("{id}")]
     public async Task<ActionResult<AuctionDTO>> GetAuctionById(Guid id)
