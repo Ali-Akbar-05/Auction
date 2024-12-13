@@ -15,11 +15,14 @@ public class DbInitializer
     private static void SeedData(AuctionDbContext dbContext)
     {
         dbContext.Database.Migrate();
-        if(dbContext.Auctions.Any()){
+        if (dbContext.Auctions.Any())
+        {
             Console.WriteLine("Already have data -- no need to seed");
         }
+        else
+        {
 
-        var auctions = new List<Auction>(){
+            var auctions = new List<Auction>(){
 	    // 1 Ford GT
             new Auction
             {
@@ -199,7 +202,8 @@ public class DbInitializer
                 }
             }
         };
-        dbContext.AddRange(auctions);
-        dbContext.SaveChanges();
+            dbContext.AddRange(auctions);
+            dbContext.SaveChanges();
+        }
     }
 }
