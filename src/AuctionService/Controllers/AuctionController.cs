@@ -6,6 +6,7 @@ using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Contracts.Auctions;
 using MassTransit;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -52,13 +53,14 @@ public class AuctionsController : ControllerBase
         return _mapper.Map<AuctionDTO>(auction);
     }
 
+    [Authorize]
     [HttpPost]
     public async Task<ActionResult<AuctionDTO>> CreateAuction(CreateAuctionDto auctionDto)
     {
 
         var auction = _mapper.Map<Auction>(auctionDto);
         // TODO : add current user as seler
-        auction.Seller = "test";
+        auction.Seller = User.Identity.Name;
         _dbCon.Auctions.Add(auction);
 
         var newAuction = _mapper.Map<AuctionDTO>(auction);
@@ -73,12 +75,15 @@ public class AuctionsController : ControllerBase
         return CreatedAtAction(nameof(GetAuctionById), new { auction.Id }, newAuction);
     }
 
+    [Authorize]
     [HttpPut("{id}")]
     public async Task<ActionResult> UpdateAuction(Guid id, UpdateAuctionDto updateAuctionDto)
     {
         var auction = await _dbCon.Auctions.Include(b => b.Item)
         .FirstOrDefaultAsync(b => b.Id == id);
         if (auction == null) return NotFound();
+
+        if (auction.Seller != User.Identity.Name) return Forbid();
 
         auction.Item.Make = updateAuctionDto.Make ?? auction.Item.Make;
         auction.Item.Model = updateAuctionDto.Model ?? auction.Item.Model;
@@ -91,11 +96,15 @@ public class AuctionsController : ControllerBase
         if (result) return Ok();
         return BadRequest("Problem saving change.");
     }
+
+    [Authorize]
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteAuction(Guid id)
     {
         var auction = await _dbCon.Auctions.FirstOrDefaultAsync(b => b.Id == id);
         if (auction == null) return NotFound();
+
+        if (auction.Seller != User.Identity.Name) return Forbid();
 
         _dbCon.Auctions.Remove(auction);
         await _publishEndpoint.Publish<AuctionDeleted>(new { Id = auction.Id.ToString() });
